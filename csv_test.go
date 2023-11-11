@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"testing"
+	"testing/iotest"
 )
 
 func TestOperations(t *testing.T) {
@@ -35,5 +39,85 @@ func TestOperations(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestCSV2Float(t *testing.T) {
+	csvData := `IP Address,Requests,Resonse Time
+192.168.0.199,2056,236
+192.168.0.88,899,220
+192.168.0.199,3054,226
+192.168.0.100,4133,218
+192.168.1.199,950,238
+`
+	// Test cases for CSV2Float Test
+	testCases := []struct {
+		name   string
+		col    int
+		exp    []float64
+		expErr error
+		r      io.Reader
+	}{
+		{
+			name: "Column2", col: 2,
+			exp:    []float64{2056, 899, 3054, 4133, 950},
+			expErr: nil,
+			r:      bytes.NewBufferString(csvData),
+		},
+		{
+			name: "Column3", col: 3,
+			exp:    []float64{236, 220, 226, 218, 238},
+			expErr: nil,
+			r:      bytes.NewBufferString(csvData),
+		},
+		{
+			name: "FailRead", col: 1,
+			exp:    nil,
+			expErr: iotest.ErrTimeout,
+			r:      iotest.TimeoutReader(bytes.NewReader([]bytes{0})),
+		},
+		{
+			name: "FaildNotNumber", col: 1,
+			exp:    nil,
+			expErr: ErrNotNumber,
+			r:      bytes.NewBufferString(csvData),
+		},
+		{
+			name: "FaildInvalidColumn", col: 4,
+			exp:    nil,
+			expErr: ErrInvalidColumn,
+			r:      bytes.NewBufferString(csvData),
+		},
+	}
+
+	// CSV2Float Tests execution
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := csv2float(tc.r, tc.col)
+
+			// Check for errors if expErr is not nil
+			if tc.expErr != nil {
+				if err == nil {
+					t.Errorf("Expected error. Got nil instead")
+				}
+
+				if !errors.Is(err, tc.expErr) {
+					t.Errorf("Expected error %q, got %q instead", tc.expErr, err)
+				}
+
+				return
+			}
+
+			// Check results if errros are not exptected
+			if err != nil {
+				t.Errorf("Expected no error. Got %q instead", err)
+			}
+
+			for i, exp := range tc.exp {
+				if res[i] != exp {
+					t.Errorf("Expected %g, got %g instead", exp, res[i])
+				}
+			}
+		})
 	}
 }
