@@ -59,8 +59,8 @@ func csv2float(r io.Reader, column int) ([]float64, error) {
 		}
 
 		data = append(data, value)
-
-		// Return the slice fo float64 and nil error
-		return data, nil
 	}
+
+	// Return the slice fo float64 and nil error
+	return data, nil
 }
